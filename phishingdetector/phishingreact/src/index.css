@@ -173,6 +173,20 @@ footer .citation {
   height: 40px;
 }
 
+.stats {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.stats h3 {
+  margin-bottom: 10px;
+}
+
+.stats canvas {
+  max-width: 200px;
+  margin: 0 auto;
+}
+
 @media (max-width: 768px) {
   .content {
     flex-direction: column;

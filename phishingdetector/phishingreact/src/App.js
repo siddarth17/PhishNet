@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import './App.css';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 function App() {
   const [activeTab, setActiveTab] = useState('email');
@@ -13,6 +17,24 @@ function App() {
   const [urlError, setUrlError] = useState('');
   const [urlPrediction, setUrlPrediction] = useState(null);
   const [urlProbability, setUrlProbability] = useState(null);
+  const [emailStats, setEmailStats] = useState({ phishing: 0, not_phishing: 0 });
+  const [urlStats, setUrlStats] = useState({ phishing: 0, not_phishing: 0 });
+  const [isEmailSubmitted, setIsEmailSubmitted] = useState(false);
+  const [isUrlSubmitted, setIsUrlSubmitted] = useState(false);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get('http://localhost:5001/stats');
+      setEmailStats(response.data.email);
+      setUrlStats(response.data.url);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
@@ -26,6 +48,8 @@ function App() {
       const response = await axios.post('http://localhost:5001/predict-email', { text: combinedText });
       setEmailPrediction(response.data.prediction);
       setEmailProbability(response.data.probability);
+      setIsEmailSubmitted(true);
+      fetchStats();
     } catch (error) {
       console.error('Error:', error);
     }
@@ -37,6 +61,8 @@ function App() {
       const response = await axios.post('http://localhost:5001/predict-url', { url });
       setUrlPrediction(response.data.prediction);
       setUrlProbability(response.data.probability);
+      setIsUrlSubmitted(true);
+      fetchStats();
     } catch (error) {
       console.error('Error:', error);
     }
@@ -67,6 +93,50 @@ function App() {
       <div className="result">
         <h3>Prediction: {resultText}</h3>
         <p>{confidenceText}</p>
+      </div>
+    );
+  };
+
+  const renderPieChart = (stats, type) => {
+    const data = {
+      labels: ['Phishing', 'Not Phishing'],
+      datasets: [
+        {
+          data: [stats.phishing, stats.not_phishing],
+          backgroundColor: ['#FF6384', '#36A2EB'],
+          hoverBackgroundColor: ['#FF6384', '#36A2EB']
+        }
+      ]
+    };
+  
+    const options = {
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed || 0;
+              const total = context.dataset.data.reduce((acc, data) => acc + data, 0);
+              const percentage = ((value / total) * 100).toFixed(0);
+              return `${label}: ${percentage}%`;
+            }
+          }
+        },
+        legend: {
+          display: true,
+          position: 'bottom'
+        }
+      }
+    };
+  
+    const total = stats.phishing + stats.not_phishing;
+    const phishingPercentage = Math.round((stats.phishing / total) * 100);
+  
+    return (
+      <div className="stats">
+        <h3>{type} Statistics</h3>
+        <Pie data={data} options={options} />
+        <p>{phishingPercentage}% Phishing {type}s detected</p>
       </div>
     );
   };
@@ -103,7 +173,10 @@ function App() {
                       id="emailSubject"
                       type="text"
                       value={emailSubject}
-                      onChange={(e) => setEmailSubject(e.target.value)}
+                      onChange={(e) => {
+                        setEmailSubject(e.target.value);
+                        setIsEmailSubmitted(false);
+                      }}
                       placeholder="Enter the email subject"
                     />
                   </div>
@@ -114,6 +187,7 @@ function App() {
                       value={emailBody}
                       onChange={(e) => {
                         setEmailBody(e.target.value);
+                        setIsEmailSubmitted(false);
                         if (e.target.value.length < 150) {
                           setEmailBodyError('Email body must be at least 150 characters long.');
                         } else {
@@ -125,7 +199,7 @@ function App() {
                     />
                     {emailBodyError && <p className="error-message">{emailBodyError}</p>}
                   </div>
-                  <button type="submit" disabled={emailBody.length < 150}>Check Email</button>
+                  <button type="submit" disabled={emailBody.length < 150 || isEmailSubmitted}>Check Email</button>
                 </form>
               </div>
             )}
@@ -142,12 +216,13 @@ function App() {
                       onChange={(e) => {
                         setUrl(e.target.value);
                         setUrlError('');
+                        setIsUrlSubmitted(false);
                       }}
                       placeholder="Enter URL here..."
                     />
                     {urlError && <p className="error-message">{urlError}</p>}
                   </div>
-                  <button type="submit">Check URL</button>
+                  <button type="submit" disabled={isUrlSubmitted}>Check URL</button>
                 </form>
               </div>
             )}
@@ -156,6 +231,8 @@ function App() {
             <h2>Results</h2>
             {activeTab === 'email' && renderResult(emailPrediction, emailProbability, 'email')}
             {activeTab === 'url' && renderResult(urlPrediction, urlProbability, 'url')}
+            {activeTab === 'email' && renderPieChart(emailStats, 'Email')}
+            {activeTab === 'url' && renderPieChart(urlStats, 'URL')}
           </div>
         </div>
       </main>
