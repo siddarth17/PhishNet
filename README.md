@@ -1,3 +1,2 @@
 # PhishNet
-
-<img width="1293" alt="Screenshot 2024-06-21 at 2 56 26 PM" src="https://github.com/siddarth17/PhishNet/assets/111927633/e77e20f2-0b5a-4d32-b619-2b1ecabdb139">
+<img width="1292" alt="Screenshot 2024-06-23 at 12 41 07 AM" src="https://github.com/siddarth17/PhishNet/assets/111927633/5a0b35dd-05cd-4b30-aaeb-eb7c6073ebb0">
